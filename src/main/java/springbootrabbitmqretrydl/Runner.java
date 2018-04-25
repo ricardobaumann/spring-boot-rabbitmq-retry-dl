@@ -20,7 +20,7 @@ public class Runner implements CommandLineRunner {
     @Override
     public void run(String... args) throws Exception {
         System.out.println("Sending message...");
-        rabbitTemplate.convertAndSend(SpringBootRabbitmqRetryDlApplication.topicExchangeName, "foo.bar.baz", "Hello from RabbitMQ!");
+        rabbitTemplate.convertAndSend(SpringBootRabbitmqRetryDlApplication.DEFAULT_EXCHANGE, "work", "Hello from RabbitMQ!");
     }
 
 }

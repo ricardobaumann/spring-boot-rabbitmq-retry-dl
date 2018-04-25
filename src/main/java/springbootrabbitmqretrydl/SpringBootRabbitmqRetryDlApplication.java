@@ -1,6 +1,7 @@
 package springbootrabbitmqretrydl;
 
 import org.aopalliance.aop.Advice;
+import org.springframework.amqp.AmqpRejectAndDontRequeueException;
 import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.BindingBuilder;
 import org.springframework.amqp.core.Message;
@@ -17,37 +18,50 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.retry.interceptor.RetryOperationsInterceptor;
 
+import java.util.HashMap;
+import java.util.Map;
+
 @SpringBootApplication
 public class SpringBootRabbitmqRetryDlApplication {
 
-	static final String topicExchangeName = "spring-boot-exchange";
+    public static final String DEFAULT_EXCHANGE = "default_exchange";
+    private static final String DEAD_LETTER_QUEUE = "dlq";
+    private static final String WORKORDER_QUEUE = "work";
 
-	static final String queueName = "spring-boot";
+    @Bean
+    TopicExchange exchange()
+    {
+        return new TopicExchange(DEFAULT_EXCHANGE);
+    }
 
-	@Bean
-    Queue queue() {
-		return new Queue(queueName, false);
-	}
+    @Bean
+    Queue deadLetterQueue()
+    {
+        return new Queue(DEAD_LETTER_QUEUE,true);
+    }
 
-	@Bean
-    TopicExchange exchange() {
-		return new TopicExchange(topicExchangeName);
-	}
+    @Bean
+    Queue queue()
+    {
+        Map<String, Object> args = new HashMap<>();
+        args.put("x-dead-letter-exchange", DEFAULT_EXCHANGE);
+        args.put("x-dead-letter-routing-key", DEAD_LETTER_QUEUE);
+        return new Queue(WORKORDER_QUEUE,true,false,false,args);
+    }
+    @Bean
+    Binding binding(Queue queue, TopicExchange exchange)
+    {
+        return BindingBuilder.bind(queue).to(exchange).with(WORKORDER_QUEUE);
+    }
 
-	@Bean
-    Binding binding(Queue queue, TopicExchange exchange) {
-		return BindingBuilder.bind(queue).to(exchange).with("foo.bar.#");
-	}
+    @Bean
+    Binding bindingDeadLetter(Queue deadLetterQueue, TopicExchange exchange)
+    {
+        return BindingBuilder.bind(deadLetterQueue).to(exchange).with(DEAD_LETTER_QUEUE);
+    }
 
-	@Bean
-    SimpleMessageListenerContainer container(ConnectionFactory connectionFactory,
-                                             MessageListenerAdapter listenerAdapter) {
-		SimpleMessageListenerContainer container = new SimpleMessageListenerContainer();
-		container.setConnectionFactory(connectionFactory);
-		container.setQueueNames(queueName);
-		container.setMessageListener(listenerAdapter);
-		container.setAdviceChain(interceptor());
-		return container;
+	public static void main(String[] args) {
+		SpringApplication.run(SpringBootRabbitmqRetryDlApplication.class, args);
 	}
 
     @Bean
@@ -55,16 +69,25 @@ public class SpringBootRabbitmqRetryDlApplication {
         return RetryInterceptorBuilder.stateless()
                 .maxAttempts(5)
                 .backOffOptions(1000, 3, 60000)
-                .recoverer((message, cause) -> System.out.println("Faiou: "+new String(message.getBody())))
+                .recoverer((message, cause) -> {
+                    throw new AmqpRejectAndDontRequeueException("to dead-letter");
+                })
                 .build();
     }
 
-	@Bean
-	MessageListenerAdapter listenerAdapter(Receiver receiver) {
-		return new MessageListenerAdapter(receiver, "receiveMessage");
-	}
+    @Bean
+    MessageListenerAdapter listenerAdapter(Receiver receiver) {
+        return new MessageListenerAdapter(receiver, "receiveMessage");
+    }
 
-	public static void main(String[] args) {
-		SpringApplication.run(SpringBootRabbitmqRetryDlApplication.class, args);
-	}
+    @Bean
+    SimpleMessageListenerContainer container(ConnectionFactory connectionFactory,
+                                             MessageListenerAdapter listenerAdapter) {
+        SimpleMessageListenerContainer container = new SimpleMessageListenerContainer();
+        container.setConnectionFactory(connectionFactory);
+        container.setQueueNames(WORKORDER_QUEUE);
+        container.setMessageListener(listenerAdapter);
+        container.setAdviceChain(interceptor());
+        return container;
+    }
 }
