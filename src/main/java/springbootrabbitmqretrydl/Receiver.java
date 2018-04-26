@@ -8,11 +8,14 @@ import java.util.Date;
 @Component
 public class Receiver {
 
-    private boolean last = true;
-
     public void receiveMessage(String message) {
-        System.out.println("Received <" + message + "> at "+new SimpleDateFormat("HH:mm:ss").format(new Date()));
-        throw new RuntimeException("failed");
+        if (Integer.parseInt(message)%2==0) {
+            System.out.println("Received even <" + message + "> at "+new SimpleDateFormat("HH:mm:ss").format(new Date()));
+
+        } else {
+            System.err.println("Received odd number "+message);
+            throw new RuntimeException("failed");
+        }
     }
 
 

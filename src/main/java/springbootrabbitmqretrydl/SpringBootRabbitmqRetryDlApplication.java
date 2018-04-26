@@ -17,11 +17,13 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.retry.interceptor.RetryOperationsInterceptor;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 import java.util.HashMap;
 import java.util.Map;
 
 @SpringBootApplication
+@EnableScheduling
 public class SpringBootRabbitmqRetryDlApplication {
 
     public static final String DEFAULT_EXCHANGE = "default_exchange";
@@ -70,7 +72,7 @@ public class SpringBootRabbitmqRetryDlApplication {
                 .maxAttempts(5)
                 .backOffOptions(1000, 3, 60000)
                 .recoverer((message, cause) -> {
-                    throw new AmqpRejectAndDontRequeueException("to dead-letter");
+                    throw new AmqpRejectAndDontRequeueException(String.format("Message id %s failed after retry", new String(message.getBody())));
                 })
                 .build();
     }

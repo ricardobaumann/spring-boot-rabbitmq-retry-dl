@@ -1,26 +1,26 @@
 package springbootrabbitmqretrydl;
 
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
-import org.springframework.boot.CommandLineRunner;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
 @Component
-public class Runner implements CommandLineRunner {
+public class Runner {
 
     private final RabbitTemplate rabbitTemplate;
-    private final Receiver receiver;
+    private final AtomicLong atomicALong = new AtomicLong(1L);
 
-    public Runner(Receiver receiver, RabbitTemplate rabbitTemplate) {
-        this.receiver = receiver;
+    public Runner(RabbitTemplate rabbitTemplate) {
         this.rabbitTemplate = rabbitTemplate;
     }
 
-    @Override
-    public void run(String... args) throws Exception {
-        System.out.println("Sending message...");
-        rabbitTemplate.convertAndSend(SpringBootRabbitmqRetryDlApplication.DEFAULT_EXCHANGE, "work", "Hello from RabbitMQ!");
+    @Scheduled(fixedRate = 1000)
+    public void run() {
+        long id = atomicALong.getAndIncrement();
+        System.out.println("Sending message "+id);
+        rabbitTemplate.convertAndSend(SpringBootRabbitmqRetryDlApplication.DEFAULT_EXCHANGE, "work", String.valueOf(id));
     }
 
 }
