@@ -62,15 +62,11 @@ public class SpringBootRabbitmqRetryDlApplication {
         return BindingBuilder.bind(deadLetterQueue).to(exchange).with(DEAD_LETTER_QUEUE);
     }
 
-	public static void main(String[] args) {
-		SpringApplication.run(SpringBootRabbitmqRetryDlApplication.class, args);
-	}
-
     @Bean
     RetryOperationsInterceptor interceptor() {
         return RetryInterceptorBuilder.stateless()
                 .maxAttempts(5)
-                .backOffOptions(1000, 3, 60000)
+                .backOffOptions(100, 3, 60000)
                 .recoverer((message, cause) -> {
                     throw new AmqpRejectAndDontRequeueException(String.format("Message id %s failed after retry", new String(message.getBody())));
                 })
@@ -91,5 +87,9 @@ public class SpringBootRabbitmqRetryDlApplication {
         container.setMessageListener(listenerAdapter);
         container.setAdviceChain(interceptor());
         return container;
+    }
+
+    public static void main(String[] args) {
+        SpringApplication.run(SpringBootRabbitmqRetryDlApplication.class, args);
     }
 }

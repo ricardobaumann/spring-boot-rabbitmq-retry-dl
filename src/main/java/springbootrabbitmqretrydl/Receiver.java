@@ -14,7 +14,7 @@ public class Receiver {
 
         } else {
             System.err.println("Received odd number "+message);
-            throw new RuntimeException("failed");
+            //throw new RuntimeException("failed");
         }
     }
 

@@ -16,7 +16,7 @@ public class Runner {
         this.rabbitTemplate = rabbitTemplate;
     }
 
-    @Scheduled(fixedRate = 1000)
+    @Scheduled(fixedRate = 100)
     public void run() {
         long id = atomicALong.getAndIncrement();
         System.out.println("Sending message "+id);
